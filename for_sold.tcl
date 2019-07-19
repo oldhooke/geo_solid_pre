@@ -23,10 +23,6 @@ proc ::hm::MyTab::Answer { question type } {
 			-message "$question" \
 			-type $type]
 }
-#################################################################
-proc ::hm::MyTab::ValidateName { name } {
-	return [ regexp {^[a-zA-Z]+[0-9a-zA-Z_-]*$} $name ] 
-}
 
 #################################################################
 proc ::hm::MyTab::DialogCreate { args } {
@@ -174,7 +170,15 @@ proc ::hm::MyTab::Main { args } {
 			grid $frame2.rigid_master_mass -sticky ew
 			
 			grid columnconfigure $frame2 "all" -weight 1
+		
+		# Create the frame3
+		set frame3 [labelframe $m_recess.frame3 -text "tools" ];
+		pack $frame3 -side top -anchor nw -fill x ;
+			::hwtk::button $frame3.fe_to_geo -text "fe to geo" -help "fe to geo" -command { ::hm::MyTab::fe_to_geo }
+			grid $frame3.fe_to_geo -sticky ew
 			
+			grid columnconfigure $frame3 "all" -weight 1
+		
 		# Create the frame4
         set frame4 [frame $m_recess.frame4];
         pack $frame4 -side bottom -anchor nw -fill x;
@@ -274,6 +278,17 @@ proc ::hm::MyTab::delete_all { type } {
 
 proc ::hm::MyTab::is_template { name } {
 	return [ string equal -nocase $name [ hm_info templatecodename]]
+}
+
+proc ::hm::MyTab::ValidateName { name } {
+	return [ regexp {^[a-zA-Z]+[0-9a-zA-Z_-]*$} $name ] 
+}
+
+proc ::hm::MyTab::select_panal { type msg } {
+	*createmarkpanel $type 1 $msg
+	set ans	[ hm_getmark $type 1 ]
+	*clearmark $type 1
+	set ans
 }
 ##########################################################################
 ### solid
@@ -389,6 +404,33 @@ proc ::hm::MyTab::rigid_master_mass { args } {
 	catch {
 		eval *createmark nodes 1 $master_nodes
 		*masselement 1 0 "" 0
+	}
+	##
+	hm_commandfilestate $state
+	hm_blockmessages 0
+	##
+}
+##########################################################################
+## fe to geometry
+proc ::hm::MyTab::fe_to_geo { args } {
+	##
+	set state [ hm_commandfilestate 0]
+	hm_blockmessages 1
+	##
+	set comps [ select_panal components "select components.." ]
+	
+	foreach i $comps {
+		catch {
+			*facesdelete 
+			*createmark components 1 $i 
+			*findfaces components 1 
+			*currentcollector components  "^faces"
+			*createmark elements 1 "by component" "^faces"
+			*createmark elements 2
+			*fetosurfs 1 2 91 1200 0.1 0
+			*createmark surfaces 1 "by component" "^faces"
+			*movemark surfaces 1 [ hm_getvalue comps id=$i dataname=name]
+		}
 	}
 	##
 	hm_commandfilestate $state
